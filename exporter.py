@@ -195,8 +195,9 @@ def export_config(db, output_dir):
                 yaml.dump(
                     cleaned,
                     f,
-                    sort_keys=False,   # we already sorted manually
-                    default_flow_style=False
+                    sort_keys=False,
+                    default_flow_style=False,
+                    default_style='"'
                 )
 
 

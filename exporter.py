@@ -46,14 +46,6 @@ def clean_document(doc):
     return doc
 
 
-def parse_value(value):
-    if isinstance(value, str):
-        value = value.strip()
-        if value.startswith("'") and value.endswith("'"):
-            return value[1:-1]
-    return value
-
-
 def insert_path(root, parts, value):
     current = root
     parent = None
@@ -84,7 +76,7 @@ def insert_path(root, parts, value):
                 current.append({})
 
             if is_last:
-                current[index] = parse_value(value)
+                current[index] = value
             else:
                 parent = current
                 parent_key = index
@@ -95,7 +87,7 @@ def insert_path(root, parts, value):
 
         else:
             if is_last:
-                current[part] = parse_value(value)
+                current[part] = value
             else:
                 if part not in current:
                     current[part] = [] if next_part and next_part.isdigit() else {}

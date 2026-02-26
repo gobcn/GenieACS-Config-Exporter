@@ -46,6 +46,55 @@ def clean_document(doc):
     return doc
 
 
+def insert_path(root, path_parts, value):
+    current = root
+
+    for i, part in enumerate(path_parts):
+        is_last = i == len(path_parts) - 1
+
+        # If numeric -> list index
+        if part.isdigit():
+            index = int(part)
+
+            if not isinstance(current, list):
+                # Convert dict placeholder to list if needed
+                current_keys = list(current.keys())
+                current.clear()
+                current = []
+                for _ in current_keys:
+                    current.append({})
+
+            # Expand list if necessary
+            while len(current) <= index:
+                current.append({})
+
+            if is_last:
+                current[index] = parse_value(value)
+            else:
+                if not isinstance(current[index], (dict, list)):
+                    current[index] = {}
+                current = current[index]
+
+        else:
+            if is_last:
+                current[part] = parse_value(value)
+            else:
+                if part not in current:
+                    # Decide next container type by looking ahead
+                    next_part = path_parts[i + 1]
+                    current[part] = [] if next_part.isdigit() else {}
+                current = current[part]
+
+
+def parse_value(value):
+    # Values are stored like "'tags'" (quoted strings)
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("'") and value.endswith("'"):
+            return value[1:-1]
+    return value
+
+
 def export_config(db, output_dir):
     config_dir = os.path.join(output_dir, "config")
     ui_dir = os.path.join(output_dir, "ui")
@@ -55,14 +104,7 @@ def export_config(db, output_dir):
 
     docs = list(db.config.find())
 
-    # --- Group UI fragments ---
-    ui_sections = {
-        "overview": [],
-        "charts": [],
-        "filters": [],
-        "index": [],
-        "device": [],
-    }
+    ui_data = {}
 
     for doc in docs:
         key = str(doc.get("_id"))
@@ -70,31 +112,24 @@ def export_config(db, output_dir):
 
         if key.startswith("ui."):
             parts = key.split(".")
-            if len(parts) >= 3:
-                section = parts[1]
-                if section in ui_sections:
-                    ui_sections[section].append((key, value))
+            section = parts[1]
+            path_parts = parts[2:]
+
+            ui_data.setdefault(section, {})
+
+            insert_path(ui_data[section], path_parts, value)
             continue
 
         # Non-UI config
         path = os.path.join(config_dir, f"{key}.json")
         write_json(path, {"value": value})
 
-    # --- Reconstruct YAML files ---
-    for section, items in ui_sections.items():
-        if not items:
-            continue
-
-        # Sort by full key to maintain stable ordering
-        items.sort(key=lambda x: x[0])
-
+    # Dump YAML exactly as GenieACS expects
+    for section, content in ui_data.items():
         path = os.path.join(ui_dir, f"{section}.yaml")
 
         with open(path, "w", newline="\n") as f:
-            for _, value in items:
-                if value:
-                    f.write(value.rstrip())
-                    f.write("\n\n")
+            yaml.dump(content, f, sort_keys=False)
 
 
 def export_standard_collection(db, collection_name, output_dir):

@@ -32,6 +32,13 @@ def write_js(path, script):
         f.write(script.strip() + "\n")
 
 
+def extract_id(doc):
+    _id = doc.get("_id")
+    if _id is not None:
+        return str(_id)
+    return None
+
+
 def clean_document(doc):
     doc.pop("_id", None)
     return doc
@@ -44,8 +51,10 @@ def export_config(db, output_dir):
     docs = list(db.config.find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
-        name = doc.get("name", "config")
+
+        name = doc.get("name") or doc_id or "config"
         path = os.path.join(out_dir, f"{name}.json")
         write_json(path, doc)
 
@@ -57,9 +66,10 @@ def export_standard_collection(db, collection_name, output_dir):
     docs = list(db[collection_name].find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
-        name = doc.get("name") or doc.get("username") or "unnamed"
 
+        name = doc.get("name") or doc.get("username") or doc_id or "unnamed"
         path = os.path.join(out_dir, f"{name}.json")
         write_json(path, doc)
 
@@ -71,13 +81,14 @@ def export_users(db, output_dir):
     docs = list(db.users.find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
 
         # Remove sensitive fields
         doc.pop("password", None)
         doc.pop("passwordHash", None)
 
-        username = doc.get("username", "unknown")
+        username = doc.get("username") or doc_id or "unknown"
         path = os.path.join(out_dir, f"{username}.json")
         write_json(path, doc)
 
@@ -89,9 +100,10 @@ def export_provisions(db, output_dir):
     docs = list(db.provisions.find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
 
-        name = doc.get("name", "unnamed")
+        name = doc.get("name") or doc_id or "unnamed"
         script = doc.pop("script", "")
 
         js_path = os.path.join(out_dir, f"{name}.js")
@@ -108,9 +120,10 @@ def export_virtual_parameters(db, output_dir):
     docs = list(db.virtualParameters.find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
 
-        name = doc.get("name", "unnamed")
+        name = doc.get("name") or doc_id or "unnamed"
         script = doc.pop("script", "")
 
         js_path = os.path.join(out_dir, f"{name}.js")
@@ -127,12 +140,13 @@ def export_files(db, output_dir):
     docs = list(db.files.find())
 
     for doc in docs:
+        doc_id = extract_id(doc)
         clean_document(doc)
 
-        # Do NOT export binary GridFS data
+        # Do NOT export GridFS binary data
         doc.pop("data", None)
 
-        name = doc.get("filename", doc.get("name", "unnamed"))
+        name = doc.get("filename") or doc.get("name") or doc_id or "unnamed"
         path = os.path.join(out_dir, f"{name}.json")
         write_json(path, doc)
 

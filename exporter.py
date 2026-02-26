@@ -126,12 +126,13 @@ def export_config(db, output_dir):
         key = str(doc.get("_id"))
         value = doc.get("value")
 
+        # Non-UI config
         if not key.startswith("ui."):
             path = os.path.join(config_dir, f"{key}.json")
             write_json(path, {"value": value})
             continue
 
-    if key.startswith("ui."):
+        # --- UI routing ---
         parts = key.split(".")
 
         if parts[1] == "overview":
@@ -149,12 +150,11 @@ def export_config(db, output_dir):
         elif parts[1] == "device":
             insert_path(ui_documents["device"], parts[2:], value)
 
-        continue
-
+    # Debug (optional)
     print("UI document keys and types:")
     for name, content in ui_documents.items():
         print(name, type(content), content)
-    
+
     # Write YAML
     for name, content in ui_documents.items():
         if content:

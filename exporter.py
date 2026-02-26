@@ -19,6 +19,19 @@ EXPORT_COLLECTIONS = [
 ]
 
 
+class DoubleQuotedString(str):
+    pass
+
+def quoted_presenter(dumper, data):
+    return dumper.represent_scalar(
+        'tag:yaml.org,2002:str',
+        data,
+        style='"'
+    )
+
+yaml.add_representer(DoubleQuotedString, quoted_presenter)
+
+
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
@@ -87,6 +100,8 @@ def insert_path(root, parts, value):
 
         else:
             if is_last:
+                if isinstance(value, str) and "'" in value:
+                    value = DoubleQuotedString(value)
                 current[part] = value
             else:
                 if part not in current:
@@ -195,9 +210,8 @@ def export_config(db, output_dir):
                 yaml.dump(
                     cleaned,
                     f,
-                    sort_keys=False,
-                    default_flow_style=False,
-                    default_style='"'
+                    sort_keys=False,   # we already sorted manually
+                    default_flow_style=False
                 )
 
 

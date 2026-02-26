@@ -4,6 +4,7 @@ import argparse
 import os
 import json
 from pymongo import MongoClient
+from gridfs import GridFS
 
 
 EXPORT_COLLECTIONS = [
@@ -140,18 +141,34 @@ def export_files(db, output_dir):
     out_dir = os.path.join(output_dir, "files")
     ensure_dir(out_dir)
 
-    docs = list(db.files.find())
+    fs = GridFS(db)
+
+    docs = list(db["fs.files"].find())
 
     for doc in docs:
         doc_id = extract_id(doc)
-        clean_document(doc)
 
-        # Do NOT export GridFS binary data
-        doc.pop("data", None)
+        filename = doc.get("filename") or doc_id or "unnamed"
 
-        name = doc.get("filename") or doc.get("name") or doc_id or "unnamed"
-        path = os.path.join(out_dir, f"{name}.json")
-        write_json(path, doc)
+        # --- Export File Content ---
+        grid_file = fs.find_one({"_id": doc["_id"]})
+        if grid_file:
+            file_path = os.path.join(out_dir, filename)
+
+            with open(file_path, "wb") as f:
+                f.write(grid_file.read())
+
+        # --- Export Metadata ---
+        metadata = doc.copy()
+        clean_document(metadata)
+
+        # Remove internal GridFS fields you likely don't need
+        metadata.pop("chunkSize", None)
+        metadata.pop("length", None)
+        metadata.pop("uploadDate", None)
+
+        meta_path = os.path.join(out_dir, f"{filename}.meta.json")
+        write_json(meta_path, metadata)
 
 
 def main():

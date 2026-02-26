@@ -110,7 +110,9 @@ def export_provisions(db, output_dir):
         meta_path = os.path.join(out_dir, f"{name}.meta.json")
 
         write_js(js_path, script)
-        write_json(meta_path, doc)
+        # Only write metadata file if there is actual metadata
+        if doc:
+            write_json(meta_path, doc)
 
 
 def export_virtual_parameters(db, output_dir):

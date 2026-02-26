@@ -153,6 +153,10 @@ def export_config(db, output_dir):
         elif len(parts) > 2 and parts[1] == "device":
             insert_path(ui_documents["device"], parts[2:], value)
 
+    print("UI document keys and types:")
+    for name, content in ui_documents.items():
+        print(name, type(content), content)
+    
     # Write YAML
     for name, content in ui_documents.items():
         if content:

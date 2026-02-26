@@ -87,6 +87,7 @@ def export_users(db, output_dir):
         # Remove sensitive fields
         doc.pop("password", None)
         doc.pop("passwordHash", None)
+        doc.pop("salt", None)
 
         username = doc.get("username") or doc_id or "unknown"
         path = os.path.join(out_dir, f"{username}.json")

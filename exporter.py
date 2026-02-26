@@ -46,19 +46,30 @@ def clean_document(doc):
     return doc
 
 
-def insert_path(root, path_parts, value):
+def parse_value(value):
+    if isinstance(value, str):
+        value = value.strip()
+        if value.startswith("'") and value.endswith("'"):
+            return value[1:-1]
+    return value
+
+
+def insert_path(root, parts, value):
     current = root
 
-    for i, part in enumerate(path_parts):
-        is_last = i == len(path_parts) - 1
+    for i, part in enumerate(parts):
+        is_last = i == len(parts) - 1
+        next_part = parts[i + 1] if not is_last else None
 
+        # Numeric path segment → list index
         if part.isdigit():
             index = int(part)
 
+            # Ensure current is a list
             if not isinstance(current, list):
-                current.clear()
-                current.extend([])
+                raise TypeError("Unexpected structure: expected list")
 
+            # Expand list if needed
             while len(current) <= index:
                 current.append({})
 
@@ -66,25 +77,19 @@ def insert_path(root, path_parts, value):
                 current[index] = parse_value(value)
             else:
                 if not isinstance(current[index], (dict, list)):
-                    current[index] = {}
+                    # Decide container type based on next part
+                    current[index] = [] if next_part and next_part.isdigit() else {}
                 current = current[index]
 
         else:
+            # Non-numeric → dict key
             if is_last:
                 current[part] = parse_value(value)
             else:
                 if part not in current:
-                    next_part = path_parts[i + 1]
-                    current[part] = [] if next_part.isdigit() else {}
+                    # Decide container type based on next part
+                    current[part] = [] if next_part and next_part.isdigit() else {}
                 current = current[part]
-
-
-def parse_value(value):
-    if isinstance(value, str):
-        value = value.strip()
-        if value.startswith("'") and value.endswith("'"):
-            return value[1:-1]
-    return value
 
 
 def export_config(db, output_dir):
@@ -96,7 +101,6 @@ def export_config(db, output_dir):
 
     docs = list(db.config.find())
 
-    # Separate logical UI documents
     ui_documents = {
         "overview": {},
         "charts": {},
@@ -117,26 +121,26 @@ def export_config(db, output_dir):
         parts = key.split(".")
 
         # ui.overview.groups.*
-        if parts[1] == "overview" and parts[2] == "groups":
+        if len(parts) > 3 and parts[1] == "overview" and parts[2] == "groups":
             insert_path(ui_documents["overview"], parts[3:], value)
 
         # ui.overview.charts.*
-        elif parts[1] == "overview" and parts[2] == "charts":
+        elif len(parts) > 3 and parts[1] == "overview" and parts[2] == "charts":
             insert_path(ui_documents["charts"], parts[3:], value)
 
         # ui.filters.*
-        elif parts[1] == "filters":
+        elif len(parts) > 2 and parts[1] == "filters":
             insert_path(ui_documents["filters"], parts[2:], value)
 
         # ui.index.*
-        elif parts[1] == "index":
+        elif len(parts) > 2 and parts[1] == "index":
             insert_path(ui_documents["index"], parts[2:], value)
 
         # ui.device.*
-        elif parts[1] == "device":
+        elif len(parts) > 2 and parts[1] == "device":
             insert_path(ui_documents["device"], parts[2:], value)
 
-    # Write YAML files
+    # Write YAML
     for name, content in ui_documents.items():
         if content:
             path = os.path.join(ui_dir, f"{name}.yaml")

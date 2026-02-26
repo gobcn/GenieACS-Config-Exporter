@@ -52,19 +52,13 @@ def insert_path(root, path_parts, value):
     for i, part in enumerate(path_parts):
         is_last = i == len(path_parts) - 1
 
-        # If numeric -> list index
         if part.isdigit():
             index = int(part)
 
             if not isinstance(current, list):
-                # Convert dict placeholder to list if needed
-                current_keys = list(current.keys())
                 current.clear()
-                current = []
-                for _ in current_keys:
-                    current.append({})
+                current.extend([])
 
-            # Expand list if necessary
             while len(current) <= index:
                 current.append({})
 
@@ -80,14 +74,12 @@ def insert_path(root, path_parts, value):
                 current[part] = parse_value(value)
             else:
                 if part not in current:
-                    # Decide next container type by looking ahead
                     next_part = path_parts[i + 1]
                     current[part] = [] if next_part.isdigit() else {}
                 current = current[part]
 
 
 def parse_value(value):
-    # Values are stored like "'tags'" (quoted strings)
     if isinstance(value, str):
         value = value.strip()
         if value.startswith("'") and value.endswith("'"):
@@ -104,32 +96,52 @@ def export_config(db, output_dir):
 
     docs = list(db.config.find())
 
-    ui_data = {}
+    # Separate logical UI documents
+    ui_documents = {
+        "overview": {},
+        "charts": {},
+        "filters": {},
+        "index": {},
+        "device": {},
+    }
 
     for doc in docs:
         key = str(doc.get("_id"))
         value = doc.get("value")
 
-        if key.startswith("ui."):
-            parts = key.split(".")
-            section = parts[1]
-            path_parts = parts[2:]
-
-            ui_data.setdefault(section, {})
-
-            insert_path(ui_data[section], path_parts, value)
+        if not key.startswith("ui."):
+            path = os.path.join(config_dir, f"{key}.json")
+            write_json(path, {"value": value})
             continue
 
-        # Non-UI config
-        path = os.path.join(config_dir, f"{key}.json")
-        write_json(path, {"value": value})
+        parts = key.split(".")
 
-    # Dump YAML exactly as GenieACS expects
-    for section, content in ui_data.items():
-        path = os.path.join(ui_dir, f"{section}.yaml")
+        # ui.overview.groups.*
+        if parts[1] == "overview" and parts[2] == "groups":
+            insert_path(ui_documents["overview"], parts[3:], value)
 
-        with open(path, "w", newline="\n") as f:
-            yaml.dump(content, f, sort_keys=False)
+        # ui.overview.charts.*
+        elif parts[1] == "overview" and parts[2] == "charts":
+            insert_path(ui_documents["charts"], parts[3:], value)
+
+        # ui.filters.*
+        elif parts[1] == "filters":
+            insert_path(ui_documents["filters"], parts[2:], value)
+
+        # ui.index.*
+        elif parts[1] == "index":
+            insert_path(ui_documents["index"], parts[2:], value)
+
+        # ui.device.*
+        elif parts[1] == "device":
+            insert_path(ui_documents["device"], parts[2:], value)
+
+    # Write YAML files
+    for name, content in ui_documents.items():
+        if content:
+            path = os.path.join(ui_dir, f"{name}.yaml")
+            with open(path, "w", newline="\n") as f:
+                yaml.dump(content, f, sort_keys=False)
 
 
 def export_standard_collection(db, collection_name, output_dir):

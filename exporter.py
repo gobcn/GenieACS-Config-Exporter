@@ -55,48 +55,46 @@ def export_config(db, output_dir):
 
     docs = list(db.config.find())
 
-    # Store non-UI config normally
-    for doc in docs:
-        key = str(doc.get("_id"))
-        value = doc.get("value")
-
-        if not key.startswith("ui."):
-            path = os.path.join(config_dir, f"{key}.json")
-            write_json(path, {"value": value})
-
-    # --- Reconstruct UI YAML sections ---
+    # --- Group UI fragments ---
     ui_sections = {
-        "overview": {},
-        "charts": {},
-        "filters": {},
-        "index": {},
-        "device": {},
+        "overview": [],
+        "charts": [],
+        "filters": [],
+        "index": [],
+        "device": [],
     }
 
     for doc in docs:
         key = str(doc.get("_id"))
         value = doc.get("value")
 
-        if not key.startswith("ui."):
+        if key.startswith("ui."):
+            parts = key.split(".")
+            if len(parts) >= 3:
+                section = parts[1]
+                if section in ui_sections:
+                    ui_sections[section].append((key, value))
             continue
 
-        parts = key.split(".")  # ui.overview.devices
+        # Non-UI config
+        path = os.path.join(config_dir, f"{key}.json")
+        write_json(path, {"value": value})
 
-        if len(parts) < 3:
+    # --- Reconstruct YAML files ---
+    for section, items in ui_sections.items():
+        if not items:
             continue
 
-        section = parts[1]
-        name = parts[2]
+        # Sort by full key to maintain stable ordering
+        items.sort(key=lambda x: x[0])
 
-        if section in ui_sections:
-            ui_sections[section][name] = value
+        path = os.path.join(ui_dir, f"{section}.yaml")
 
-    # Write structured YAML files
-    for section, data in ui_sections.items():
-        if data:
-            path = os.path.join(ui_dir, f"{section}.yaml")
-            with open(path, "w") as f:
-                yaml.dump(data, f, sort_keys=True)
+        with open(path, "w", newline="\n") as f:
+            for _, value in items:
+                if value:
+                    f.write(value.rstrip())
+                    f.write("\n\n")
 
 
 def export_standard_collection(db, collection_name, output_dir):

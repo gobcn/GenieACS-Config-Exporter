@@ -131,27 +131,25 @@ def export_config(db, output_dir):
             write_json(path, {"value": value})
             continue
 
+    if key.startswith("ui."):
         parts = key.split(".")
 
-        # ui.overview.groups.*
-        if len(parts) > 3 and parts[1] == "overview" and parts[2] == "groups":
-            insert_path(ui_documents["overview"], parts[3:], value)
+        if parts[1] == "overview":
+            if len(parts) > 3 and parts[2] == "groups":
+                insert_path(ui_documents["overview"], parts[3:], value)
+            elif len(parts) > 3 and parts[2] == "charts":
+                insert_path(ui_documents["charts"], parts[3:], value)
 
-        # ui.overview.charts.*
-        elif len(parts) > 3 and parts[1] == "overview" and parts[2] == "charts":
-            insert_path(ui_documents["charts"], parts[3:], value)
-
-        # ui.filters.*
-        elif len(parts) > 2 and parts[1] == "filters":
+        elif parts[1] == "filters":
             insert_path(ui_documents["filters"], parts[2:], value)
 
-        # ui.index.*
-        elif len(parts) > 2 and parts[1] == "index":
+        elif parts[1] == "index":
             insert_path(ui_documents["index"], parts[2:], value)
 
-        # ui.device.*
-        elif len(parts) > 2 and parts[1] == "device":
+        elif parts[1] == "device":
             insert_path(ui_documents["device"], parts[2:], value)
+
+        continue
 
     print("UI document keys and types:")
     for name, content in ui_documents.items():

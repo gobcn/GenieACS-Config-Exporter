@@ -183,13 +183,6 @@ def export_config(db, output_dir):
             insert_path(ui_documents["device"], parts[2:], value)
 
     # -----------------------------
-    # Debug Output (optional)
-    # -----------------------------
-    print("UI document keys and types:")
-    for name, content in ui_documents.items():
-        print(name, type(content), content)
-
-    # -----------------------------
     # Write YAML Files
     # -----------------------------
     for name, content in ui_documents.items():

@@ -114,50 +114,79 @@ def export_config(db, output_dir):
 
     docs = list(db.config.find())
 
+    # Initialize as None so we can dynamically choose dict or list
     ui_documents = {
-        "overview": {},
-        "charts": {},
-        "filters": {},
-        "index": {},
-        "device": {},
+        "overview": None,
+        "charts": None,
+        "filters": None,
+        "index": None,
+        "device": None,
     }
 
     for doc in docs:
         key = str(doc.get("_id"))
         value = doc.get("value")
 
+        # -----------------------------
         # Non-UI config
+        # -----------------------------
         if not key.startswith("ui."):
             path = os.path.join(config_dir, f"{key}.json")
             write_json(path, {"value": value})
             continue
 
-        # --- UI routing ---
         parts = key.split(".")
 
+        # -----------------------------
+        # ui.overview.groups.*
+        # -----------------------------
         if parts[1] == "overview":
             if len(parts) > 3 and parts[2] == "groups":
+                if ui_documents["overview"] is None:
+                    ui_documents["overview"] = {}
                 insert_path(ui_documents["overview"], parts[3:], value)
+
             elif len(parts) > 3 and parts[2] == "charts":
+                if ui_documents["charts"] is None:
+                    ui_documents["charts"] = {}
                 insert_path(ui_documents["charts"], parts[3:], value)
 
+        # -----------------------------
+        # ui.filters.*
+        # -----------------------------
         elif parts[1] == "filters":
+            if ui_documents["filters"] is None:
+                ui_documents["filters"] = [] if parts[2].isdigit() else {}
             insert_path(ui_documents["filters"], parts[2:], value)
 
+        # -----------------------------
+        # ui.index.*
+        # -----------------------------
         elif parts[1] == "index":
+            if ui_documents["index"] is None:
+                ui_documents["index"] = [] if parts[2].isdigit() else {}
             insert_path(ui_documents["index"], parts[2:], value)
 
+        # -----------------------------
+        # ui.device.*
+        # -----------------------------
         elif parts[1] == "device":
+            if ui_documents["device"] is None:
+                ui_documents["device"] = [] if parts[2].isdigit() else {}
             insert_path(ui_documents["device"], parts[2:], value)
 
-    # Debug (optional)
+    # -----------------------------
+    # Debug Output (optional)
+    # -----------------------------
     print("UI document keys and types:")
     for name, content in ui_documents.items():
         print(name, type(content), content)
 
-    # Write YAML
+    # -----------------------------
+    # Write YAML Files
+    # -----------------------------
     for name, content in ui_documents.items():
-        if content:
+        if content is not None:
             path = os.path.join(ui_dir, f"{name}.yaml")
             with open(path, "w", newline="\n") as f:
                 yaml.dump(content, f, sort_keys=False)

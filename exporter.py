@@ -56,39 +56,52 @@ def parse_value(value):
 
 def insert_path(root, parts, value):
     current = root
+    parent = None
+    parent_key = None
 
     for i, part in enumerate(parts):
         is_last = i == len(parts) - 1
         next_part = parts[i + 1] if not is_last else None
 
-        # Numeric path segment → list index
         if part.isdigit():
             index = int(part)
 
-            # Ensure current is a list
+            # If current is not list, convert it
             if not isinstance(current, list):
-                raise TypeError("Unexpected structure: expected list")
+                new_list = []
+                if parent is not None:
+                    parent[parent_key] = new_list
+                else:
+                    # root replacement case
+                    root.clear()
+                    root.update({})
+                    new_list = []
+                    root = new_list
+                current = new_list
 
-            # Expand list if needed
+            # Expand list
             while len(current) <= index:
                 current.append({})
 
             if is_last:
                 current[index] = parse_value(value)
             else:
+                parent = current
+                parent_key = index
+
                 if not isinstance(current[index], (dict, list)):
-                    # Decide container type based on next part
                     current[index] = [] if next_part and next_part.isdigit() else {}
                 current = current[index]
 
         else:
-            # Non-numeric → dict key
             if is_last:
                 current[part] = parse_value(value)
             else:
                 if part not in current:
-                    # Decide container type based on next part
                     current[part] = [] if next_part and next_part.isdigit() else {}
+
+                parent = current
+                parent_key = part
                 current = current[part]
 
 

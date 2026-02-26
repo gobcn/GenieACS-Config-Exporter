@@ -3,6 +3,7 @@
 import argparse
 import os
 import json
+import yaml
 from pymongo import MongoClient
 from gridfs import GridFS
 
@@ -46,18 +47,56 @@ def clean_document(doc):
 
 
 def export_config(db, output_dir):
-    out_dir = os.path.join(output_dir, "config")
-    ensure_dir(out_dir)
+    config_dir = os.path.join(output_dir, "config")
+    ui_dir = os.path.join(output_dir, "ui")
+
+    ensure_dir(config_dir)
+    ensure_dir(ui_dir)
 
     docs = list(db.config.find())
 
+    # Store non-UI config normally
     for doc in docs:
-        doc_id = extract_id(doc)
-        clean_document(doc)
+        key = str(doc.get("_id"))
+        value = doc.get("value")
 
-        name = doc.get("name") or doc_id or "config"
-        path = os.path.join(out_dir, f"{name}.json")
-        write_json(path, doc)
+        if not key.startswith("ui."):
+            path = os.path.join(config_dir, f"{key}.json")
+            write_json(path, {"value": value})
+
+    # --- Reconstruct UI YAML sections ---
+    ui_sections = {
+        "overview": {},
+        "charts": {},
+        "filters": {},
+        "index": {},
+        "device": {},
+    }
+
+    for doc in docs:
+        key = str(doc.get("_id"))
+        value = doc.get("value")
+
+        if not key.startswith("ui."):
+            continue
+
+        parts = key.split(".")  # ui.overview.devices
+
+        if len(parts) < 3:
+            continue
+
+        section = parts[1]
+        name = parts[2]
+
+        if section in ui_sections:
+            ui_sections[section][name] = value
+
+    # Write structured YAML files
+    for section, data in ui_sections.items():
+        if data:
+            path = os.path.join(ui_dir, f"{section}.yaml")
+            with open(path, "w") as f:
+                yaml.dump(data, f, sort_keys=True)
 
 
 def export_standard_collection(db, collection_name, output_dir):

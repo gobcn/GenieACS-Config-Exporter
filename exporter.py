@@ -105,6 +105,14 @@ def insert_path(root, parts, value):
                 current = current[part]
 
 
+def sort_structure(obj):
+    if isinstance(obj, dict):
+        return {k: sort_structure(obj[k]) for k in sorted(obj.keys())}
+    elif isinstance(obj, list):
+        return [sort_structure(v) for v in obj]
+    return obj
+
+
 def export_config(db, output_dir):
     config_dir = os.path.join(output_dir, "config")
     ui_dir = os.path.join(output_dir, "ui")
@@ -188,8 +196,16 @@ def export_config(db, output_dir):
     for name, content in ui_documents.items():
         if content is not None:
             path = os.path.join(ui_dir, f"{name}.yaml")
+
+            cleaned = sort_structure(content)
+
             with open(path, "w", newline="\n") as f:
-                yaml.dump(content, f, sort_keys=False)
+                yaml.dump(
+                    cleaned,
+                    f,
+                    sort_keys=False,   # we already sorted manually
+                    default_flow_style=False
+                )
 
 
 def export_standard_collection(db, collection_name, output_dir):

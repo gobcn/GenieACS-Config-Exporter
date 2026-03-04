@@ -113,8 +113,8 @@ def insert_path(root, parts, value):
 
 
 def export_config(db, output_dir):
-    config_dir = os.path.join(output_dir, "config")
-    ui_dir = os.path.join(output_dir, "ui")
+    config_dir = os.path.join(output_dir, "config", "raw")
+    ui_dir = os.path.join(output_dir, "config", "ui")
 
     ensure_dir(config_dir)
     ensure_dir(ui_dir)

@@ -182,6 +182,13 @@ def export_config(db, output_dir):
                 ui_documents["device"] = [] if parts[2].isdigit() else {}
             insert_path(ui_documents["device"], parts[2:], value)
 
+        # -----------------------------
+        # Unknown ui.* config
+        # -----------------------------
+        else:
+            path = os.path.join(config_dir, f"{key}.json")
+            write_json(path, {"value": value})
+
     # -----------------------------
     # Write YAML Files
     # -----------------------------

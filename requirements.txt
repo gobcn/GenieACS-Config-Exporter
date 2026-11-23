@@ -1,2 +1,2 @@
-pymongo>=4.19.0
+pymongo>=4.20.1
 PyYAML>=6.0.3
